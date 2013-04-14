@@ -395,6 +395,10 @@ public class PhoneUtils {
         static boolean vibCallWaiting(Context context) {
             return getPrefs(context).getBoolean("button_vibrate_call_waiting", false);
         }
+        static boolean keepProximitySensorOn(Context context) {
+            return PreferenceManager.getDefaultSharedPreferences(context)
+                    .getBoolean("keep_proximity_sensor_on", false);
+        }
         static boolean showInCallEvents(Context context) {
             return getPrefs(context).getBoolean("button_show_ssn_key", false);
         }
