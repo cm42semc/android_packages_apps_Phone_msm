@@ -20,7 +20,6 @@ package com.android.phone;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
-import android.bluetooth.IBluetoothHeadsetPhone;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -231,7 +230,7 @@ public class PhoneUtils {
         final Phone phone = ringingCall.getPhone();
         final boolean phoneIsCdma = (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA);
         boolean answered = false;
-        IBluetoothHeadsetPhone btPhone = null;
+        BluetoothHandsfree bluetoothHandsfree = null;
 
         // enable noise suppression
         turnOnNoiseSuppression(app.getApplicationContext(), true);
@@ -263,16 +262,12 @@ public class PhoneUtils {
                         // drops off
                         app.cdmaPhoneCallState.setAddCallMenuStateAfterCallWaiting(true);
 
-                        // If a BluetoothPhoneService is valid we need to set the second call state
+                        // If a BluetoothHandsfree is valid we need to set the second call state
                         // so that the Bluetooth client can update the Call state correctly when
                         // a call waiting is answered from the Phone.
-                        btPhone = app.getBluetoothPhoneService();
-                        if (btPhone != null) {
-                            try {
-                                btPhone.cdmaSetSecondCallState(true);
-                            } catch (RemoteException e) {
-                                Log.e(LOG_TAG, Log.getStackTraceString(new Throwable()));
-                            }
+                        bluetoothHandsfree = app.getBluetoothHandsfree();
+                        if (bluetoothHandsfree != null) {
+                            bluetoothHandsfree.cdmaSetSecondCallState(true);
                         }
                   }
                 }
@@ -300,7 +295,7 @@ public class PhoneUtils {
                 // - we did not activate speaker by ourselves during the process above, and
                 // - Bluetooth headset is not in use.
                 if (isRealIncomingCall && !speakerActivated && isSpeakerOn(app)
-                        && !app.isBluetoothHeadsetAudioOn()) {
+                        && !(bluetoothHandsfree != null && bluetoothHandsfree.isAudioOn())) {
                     // This is not an error but might cause users' confusion. Add log just in case.
                     Log.i(LOG_TAG, "Forcing speaker off due to new incoming call...");
                     turnOnSpeaker(app, false, true);
@@ -309,15 +304,11 @@ public class PhoneUtils {
                 Log.w(LOG_TAG, "answerCall: caught " + ex, ex);
 
                 if (phoneIsCdma) {
-                    // restore the cdmaPhoneCallState and btPhone.cdmaSetSecondCallState:
+                    // restore the cdmaPhoneCallState and bthf.cdmaSetSecondCallState:
                     app.cdmaPhoneCallState.setCurrentCallState(
                             app.cdmaPhoneCallState.getPreviousCallState());
-                    if (btPhone != null) {
-                        try {
-                            btPhone.cdmaSetSecondCallState(false);
-                        } catch (RemoteException e) {
-                            Log.e(LOG_TAG, Log.getStackTraceString(new Throwable()));
-                        }
+                    if (bluetoothHandsfree != null) {
+                        bluetoothHandsfree.cdmaSetSecondCallState(false);
                     }
                 }
             }
@@ -781,8 +772,9 @@ public class PhoneUtils {
             final boolean speakerActivated = activateSpeakerIfDocked(phone);
 
             // See also similar logic in answerCall().
+            final BluetoothHandsfree bluetoothHandsfree = app.getBluetoothHandsfree();
             if (initiallyIdle && !speakerActivated && isSpeakerOn(app)
-                    && !app.isBluetoothHeadsetAudioOn()) {
+                    && !(bluetoothHandsfree != null && bluetoothHandsfree.isAudioOn())) {
                 // This is not an error but might cause users' confusion. Add log just in case.
                 Log.i(LOG_TAG, "Forcing speaker off when initiating a new outgoing call...");
                 PhoneUtils.turnOnSpeaker(app, false, true);
@@ -2494,8 +2486,9 @@ public class PhoneUtils {
         if (PhoneGlobals.mDockState != Intent.EXTRA_DOCK_STATE_UNDOCKED) {
             if (DBG) log("activateSpeakerIfDocked(): In a dock -> may need to turn on speaker.");
             PhoneGlobals app = PhoneGlobals.getInstance();
+            BluetoothHandsfree bthf = app.getBluetoothHandsfree();
 
-            if (!app.isHeadsetPlugged() && !app.isBluetoothHeadsetAudioOn()) {
+            if (!app.isHeadsetPlugged() && !(bthf != null && bthf.isAudioOn())) {
                 turnOnSpeaker(phone.getContext(), true, true);
                 activated = true;
             }

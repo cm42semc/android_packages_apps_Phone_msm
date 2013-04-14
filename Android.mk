@@ -1,3 +1,5 @@
+ifeq ($(BOARD_HAVE_BLUETOOTH_BLUEZ),true)
+
 LOCAL_PATH:= $(call my-dir)
 
 # Static library with some common classes for the phone apps.
@@ -32,3 +34,5 @@ include $(BUILD_PACKAGE)
 
 # Build the test package
 include $(call all-makefiles-under,$(LOCAL_PATH))
+
+endif
